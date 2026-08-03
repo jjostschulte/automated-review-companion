@@ -359,7 +359,7 @@ const PublicationRow: React.FC<PublicationRowProps> = (props) => {
         {/* Questions */}
         {
             searchResults.results && searchResults.results.length > 0 &&
-            searchResults.results[0].llm_responses && searchResults.results[0].llm_responses.length > 0 &&
+            searchResults.results.some((result) => result.llm_responses && result.llm_responses.length > 0) &&
             llmQuestions && llmQuestions.length > 0 && llmQuestions.map((response: LLMQuestion, index: number) => (
                 <Fragment key={response.id}>
                   <td style={{minWidth: "220px"}}>

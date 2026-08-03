@@ -67,7 +67,9 @@ SEMANTIC_SCHOLAR_KEY=your_key                  # API key for Semantic Scholar
 WOS_KEY=your_key                              # Web of Science API key
 SCOPUS_KEY=your_key                           # Scopus API key
 IEEE_API_KEY=your_key                         # IEEE Xplore API key
-OPENAI_API_KEY=your_key                       # OpenAI API key (LLM filter uses GPT-5.5)
+OPENAI_API_KEY=your_key                       # OpenAI API key (or local LLM-compatible key)
+OPENAI_BASE_URL=https://api.openai.com/v1     # Optional: OpenAI-compatible base URL
+OPENAI_MODEL=gpt-5.5                          # Optional: model name for the LLM filter
 MAX_LLM_CALL_COUNT=300                        # Optional: daily per-IP cap on papers sent to the LLM filter
 
 ```

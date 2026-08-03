@@ -124,6 +124,8 @@ const normalizeSearchHistoryEntry = (entry: SearchHistorySummary): SearchForm =>
   };
 };
 
+const getLLMExamplePaperIds = (llmAnswers: LLMUserAnswer[]) => llmAnswers.map((answer) => answer.paper_id);
+
 function App() {
   const [searchForm, setSearchForm] = useState<SearchForm>(defaultSearchForm);
   const [searchResults, setSearchResults] = useState<SearchResult>(defaultSearchResult);
@@ -380,6 +382,7 @@ function App() {
     setSearchResults(defaultSearchResult);
     setSelectedPapers([]);
     setLLMQuestions(defaultLLMQuestions);
+    setLLMAnswers([]);
     setButtonState(defaultButtonState);
     setShowClearDialog(false);
 }
@@ -436,6 +439,14 @@ function App() {
       .then((res) => {
         setSearchForm(searchHistory[index]);
         setSearchResults(res.data);
+        const restoredLLMAnswers = res.data.llm_answers ?? [];
+        setLLMQuestions(res.data.llm_questions ?? []);
+        setLLMAnswers(restoredLLMAnswers);
+        setSelectedPapers(getLLMExamplePaperIds(restoredLLMAnswers));
+        setLLMOptions({
+          includeExamples: restoredLLMAnswers.length > 0,
+          includeRationale: restoredLLMAnswers.length > 0,
+        });
         setButtonState((prevState) => ({
           ...prevState,
           showSelectAll: true,
@@ -680,7 +691,37 @@ function App() {
         const normalizedHistory = res.data.history.map(normalizeSearchHistoryEntry).reverse();
         setSearchHistory(normalizedHistory);
         if (normalizedHistory.length > 0) {
-          setCurrentSearchHistoryIndex(normalizedHistory.length - 1);
+          const latestIndex = normalizedHistory.length - 1;
+          setCurrentSearchHistoryIndex(latestIndex);
+
+          const latestHistory = res.data.history[0];
+          const latestResponse = await axios.get(`${BASE_URL}/scraper/historical-search`, {
+            params: { id: latestHistory.id }
+          });
+          if (!isMounted) {
+            return;
+          }
+
+          setSearchForm(normalizeSearchHistoryEntry(latestHistory));
+          setSearchResults(latestResponse.data);
+          const restoredLLMAnswers = latestResponse.data.llm_answers ?? [];
+          setLLMQuestions(latestResponse.data.llm_questions ?? []);
+          setLLMAnswers(restoredLLMAnswers);
+          setSelectedPapers(getLLMExamplePaperIds(restoredLLMAnswers));
+          setLLMOptions({
+            includeExamples: restoredLLMAnswers.length > 0,
+            includeRationale: restoredLLMAnswers.length > 0,
+          });
+          setButtonState((prevState) => ({
+            ...prevState,
+            showSelectAll: true,
+            showDeselectAll: true,
+            showForwardSearch: true,
+            showBackwardSearch: true,
+            showPopulateMetadata: true,
+            showHideMetadata: true,
+            showExport: true,
+          }))
         }
       } catch (err) {
         console.error('Failed to load search history', err);

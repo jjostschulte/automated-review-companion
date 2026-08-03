@@ -334,6 +334,7 @@ const PaperOperations: React.FC<PaperOperationsProps> = (props) => {
             answers: llmAnswers,
             options: llmOptions,
             progress_id: progressId,
+            search_reference_id: currentSearchReferenceId,
         })
             .then((res) => {
                 // debugger;

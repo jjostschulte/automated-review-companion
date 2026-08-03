@@ -83,7 +83,9 @@ export type SearchForm = {
   },
   start_date: Date,
   end_date: Date,
-  sources: SearchEngineType[]
+  sources: SearchEngineType[],
+  llm_questions?: LLMQuestion[],
+  llm_answers?: LLMUserAnswer[],
 }
 
 export enum SearchEngineType {

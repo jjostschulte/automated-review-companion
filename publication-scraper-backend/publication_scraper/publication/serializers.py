@@ -47,3 +47,4 @@ class PublicationLLMFilterSerializer(serializers.Serializer):
     answers = serializers.ListField(child=LLMFilterUserAnswerSerializer(), default=[])
     options = LLMFilterOptionsSerializer(required=False, default={})
     progress_id = serializers.CharField(required=False, allow_blank=True, default="")
+    search_reference_id = serializers.CharField(required=False, allow_blank=True, default="")
