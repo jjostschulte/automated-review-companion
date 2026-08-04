@@ -1230,6 +1230,7 @@ function App() {
                   selectedPapers={selectedPapers}
                   buttonState={buttonState}
                   diffMode={diffMode}
+                  currentSearchReferenceId={searchHistory[currentSearchHistoryIndex]?.id ?? ""}
                 />
               </div>
               {/* Filters */}
