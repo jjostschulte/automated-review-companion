@@ -51,6 +51,7 @@ type LLMFilterProgress = {
 }
 
 const MAX_LLM_QUESTIONS = 9;
+const MAX_LLM_FILTER_PAPERS = 100;
 
 export interface PaperOperationsProps {
     selectedPapers: string[],
@@ -414,9 +415,9 @@ const PaperOperations: React.FC<PaperOperationsProps> = (props) => {
         }
 
         // Validate selected papers
-        if (selectedPapers.length > 50) {
+        if (selectedPapers.length > MAX_LLM_FILTER_PAPERS) {
             valid = false;
-            toast.error('Maximum of 50 selected papers allowed at once.');
+            toast.error(`Maximum of ${MAX_LLM_FILTER_PAPERS} selected papers allowed at once.`);
         }
         return valid;
     }
