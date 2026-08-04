@@ -50,6 +50,8 @@ type LLMFilterProgress = {
     status: "idle" | "queued" | "running" | "completed" | "failed" | "unknown";
 }
 
+const MAX_LLM_QUESTIONS = 9;
+
 export interface PaperOperationsProps {
     selectedPapers: string[],
     currentSearchReferenceId: string,
@@ -531,8 +533,8 @@ const PaperOperations: React.FC<PaperOperationsProps> = (props) => {
 
 
     const handleAddLLMQuestion = () => {
-        if (llmQuestions.length >= 5) {
-            toast.info('Maximum of 5 questions allowed.');
+        if (llmQuestions.length >= MAX_LLM_QUESTIONS) {
+            toast.info(`Maximum of ${MAX_LLM_QUESTIONS} questions allowed.`);
             return
         }
         setLLMQuestions([...llmQuestions, {
