@@ -85,6 +85,7 @@ class LLMFilter:
             "You are provided with an academic publication's detailed information along with its metadata. "
             "Your task is to carefully analyze the data and accurately answer the following questions. "
             "Review the provided publication metadata, especially the title and abstract, to determine the best answer."
+            " If no abstract is available, the answer should be 'No abstract available'."
         )
         
         if self.include_rationale:
