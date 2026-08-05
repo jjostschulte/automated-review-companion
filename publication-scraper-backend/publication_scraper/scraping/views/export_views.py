@@ -109,7 +109,12 @@ class ExportView(APIView):
                 headers.append(llm_header)
 
         output = io.StringIO()
-        writer = csv.DictWriter(output, fieldnames=headers, extrasaction='ignore')
+        writer = csv.DictWriter(
+            output,
+            fieldnames=headers,
+            extrasaction='ignore',
+            quoting=csv.QUOTE_ALL,
+        )
         writer.writeheader()
         for row in rows:
             writer.writerow(row)

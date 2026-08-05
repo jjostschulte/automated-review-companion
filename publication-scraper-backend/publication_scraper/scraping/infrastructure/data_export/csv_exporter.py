@@ -27,7 +27,7 @@ class CsvExporter(DataExporter):
         """
         super().export(exportable)
         output = io.StringIO()
-        writer = csv.writer(output)
+        writer = csv.writer(output, quoting=csv.QUOTE_ALL)
         writer.writerow(self.headers)
         writer.writerows(self.data)
         self.exported_data = output.getvalue()
