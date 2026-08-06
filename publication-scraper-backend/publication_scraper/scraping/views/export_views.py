@@ -84,9 +84,12 @@ class ExportView(APIView):
         rows = []
         for result in selected_results:
             row = dict(result)
+            llm_responses = row.get('llm_responses') or []
+            if not isinstance(llm_responses, list):
+                llm_responses = []
             responses_by_id = {
                 str(response.get('id', '')).strip(): response
-                for response in row.get('llm_responses', [])
+                for response in llm_responses
                 if isinstance(response, dict)
             }
             for question in llm_questions:
