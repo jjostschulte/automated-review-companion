@@ -38,6 +38,8 @@ class SearchResponse(models.Model):
     variations  = models.JSONField()
     matches     = models.JSONField()
     results     = models.JSONField()
+    llm_questions = models.JSONField(default=list)
+    llm_answers    = models.JSONField(default=list)
     timestamp   = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -50,5 +52,7 @@ class SearchResponse(models.Model):
             "variations": self.variations,
             "matches": self.matches,
             "results": self.results,
+            "llm_questions": self.llm_questions,
+            "llm_answers": self.llm_answers,
             "timestamp": self.timestamp
         }

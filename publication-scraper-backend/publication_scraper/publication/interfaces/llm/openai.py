@@ -21,12 +21,17 @@ class OpenAILLM:
     def __init__(self):
         self.client: OpenAI = None
         self.API_KEY = env('OPENAI_API_KEY')
+        self.BASE_URL = env('OPENAI_BASE_URL', default=None)
+        self.MODEL = env('OPENAI_MODEL', default='gpt-5.5')
         self.init_client()
         self.max_retries = 3
         self.retry_delay = 1  # seconds
 
     def init_client(self):
-        self.client = OpenAI(api_key=self.API_KEY)
+        client_kwargs = {"api_key": self.API_KEY}
+        if self.BASE_URL:
+            client_kwargs["base_url"] = self.BASE_URL
+        self.client = OpenAI(**client_kwargs)
 
     def _validate_json_structure(self, content: str, response_model: BaseModel) -> Dict[str, Any]:
         """Validate and process JSON response"""
@@ -61,11 +66,12 @@ class OpenAILLM:
         system_prompt: str,
         user_prompt: str,
         response_model: BaseModel,
-        model: str = "gpt-5.5",
+        model: Optional[str] = None,
         reasoning_effort: str = "medium",
     ) -> Dict[str, Any]:
         retries = 0
         last_error = None
+        model_name = model or self.MODEL
 
         while retries < self.max_retries:
             try:
@@ -82,10 +88,10 @@ class OpenAILLM:
                 log.info("LLM Input:")
                 log.info(f"System prompt: {full_system_prompt}")
                 log.info(f"User prompt: {user_prompt}")
-                log.info(f"Model: {model} (reasoning effort: {reasoning_effort})")
+                log.info(f"Model: {model_name} (reasoning effort: {reasoning_effort})")
 
                 response = self.client.chat.completions.create(
-                    model=model,
+                    model=model_name,
                     reasoning_effort=reasoning_effort,
                     messages=[
                         {"role": "system", "content": full_system_prompt},

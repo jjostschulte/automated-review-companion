@@ -12,11 +12,12 @@ export interface ExportDropdownProps {
   selectedPapers: string[];
   buttonState: ButtonState;
   diffMode: boolean;
+  currentSearchReferenceId?: string;
 }
 
 const ExportDropdown: React.FC<ExportDropdownProps> = (props) => {
 
-  const { selectedPapers, diffMode } = props;
+  const { selectedPapers, diffMode, currentSearchReferenceId } = props;
   const isExportDisabled = selectedPapers.length === 0 || diffMode;
   const exportFormats = [
     {
@@ -46,7 +47,8 @@ const ExportDropdown: React.FC<ExportDropdownProps> = (props) => {
     try {
       const res = await axios.post(`${BASE_URL}/scraper/export`, {
         paper_ids: selectedPapers,
-        format
+        format,
+        search_reference_id: currentSearchReferenceId
       });
       url = window.URL.createObjectURL(new Blob([res.data]));
       link = document.createElement('a');

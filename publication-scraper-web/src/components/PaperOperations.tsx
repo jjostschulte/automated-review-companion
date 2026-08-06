@@ -50,6 +50,9 @@ type LLMFilterProgress = {
     status: "idle" | "queued" | "running" | "completed" | "failed" | "unknown";
 }
 
+const MAX_LLM_QUESTIONS = 9;
+const MAX_LLM_FILTER_PAPERS = 100;
+
 export interface PaperOperationsProps {
     selectedPapers: string[],
     currentSearchReferenceId: string,
@@ -334,6 +337,7 @@ const PaperOperations: React.FC<PaperOperationsProps> = (props) => {
             answers: llmAnswers,
             options: llmOptions,
             progress_id: progressId,
+            search_reference_id: currentSearchReferenceId,
         })
             .then((res) => {
                 // debugger;
@@ -411,9 +415,9 @@ const PaperOperations: React.FC<PaperOperationsProps> = (props) => {
         }
 
         // Validate selected papers
-        if (selectedPapers.length > 50) {
+        if (selectedPapers.length > MAX_LLM_FILTER_PAPERS) {
             valid = false;
-            toast.error('Maximum of 50 selected papers allowed at once.');
+            toast.error(`Maximum of ${MAX_LLM_FILTER_PAPERS} selected papers allowed at once.`);
         }
         return valid;
     }
@@ -530,8 +534,8 @@ const PaperOperations: React.FC<PaperOperationsProps> = (props) => {
 
 
     const handleAddLLMQuestion = () => {
-        if (llmQuestions.length >= 5) {
-            toast.info('Maximum of 5 questions allowed.');
+        if (llmQuestions.length >= MAX_LLM_QUESTIONS) {
+            toast.info(`Maximum of ${MAX_LLM_QUESTIONS} questions allowed.`);
             return
         }
         setLLMQuestions([...llmQuestions, {

@@ -34,6 +34,7 @@ import {
   Publication,
   SearchForm,
   SearchMode,
+  SearchEngineType,
   SearchResult
 } from './types';
 import { BASE_URL } from './utils/common';
@@ -50,6 +51,80 @@ export type FilterForm = {
     end: Date | undefined
   }
 }
+
+type SearchHistorySummary = {
+  id: string;
+  query: Record<string, unknown>;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+};
+
+const toStringArray = (value: unknown): string[] => {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+};
+
+const toValidationPapers = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((paper) => {
+      if (typeof paper === 'string') {
+        return paper;
+      }
+      if (isRecord(paper)) {
+        return typeof paper.doi === 'string' && paper.doi
+          ? paper.doi
+          : typeof paper.title === 'string'
+            ? paper.title
+            : '';
+      }
+      return '';
+    })
+    .filter((paper): paper is string => paper.length > 0);
+};
+
+const toSearchEngineSources = (value: unknown): SearchEngineType[] => {
+  return toStringArray(value).filter((source): source is SearchEngineType => Object.values(SearchEngineType).includes(source as SearchEngineType));
+};
+
+const toDate = (value: unknown, fallback: Date): Date => {
+  if (value instanceof Date) {
+    return value;
+  }
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+  return fallback;
+};
+
+const normalizeSearchHistoryEntry = (entry: SearchHistorySummary): SearchForm => {
+  const query = isRecord(entry.query) ? entry.query : {};
+  const searchTerms = isRecord(query.search_terms) ? query.search_terms : {};
+  const sources = toSearchEngineSources(query.sources);
+
+  return {
+    id: entry.id,
+    validation_papers: toValidationPapers(query.validation_papers),
+    search_terms: {
+      advanced: typeof searchTerms.advanced === 'string' ? searchTerms.advanced : '',
+      primary: toStringArray(searchTerms.primary),
+      secondary: toStringArray(searchTerms.secondary),
+      tertiary: toStringArray(searchTerms.tertiary),
+    },
+    start_date: toDate(query.start_date, defaultSearchForm.start_date),
+    end_date: toDate(query.end_date, defaultSearchForm.end_date),
+    sources: sources.length > 0 ? sources : defaultSearchForm.sources,
+  };
+};
+
+const getLLMExamplePaperIds = (llmAnswers: LLMUserAnswer[]) => llmAnswers.map((answer) => answer.paper_id);
 
 function App() {
   const [searchForm, setSearchForm] = useState<SearchForm>(defaultSearchForm);
@@ -307,6 +382,7 @@ function App() {
     setSearchResults(defaultSearchResult);
     setSelectedPapers([]);
     setLLMQuestions(defaultLLMQuestions);
+    setLLMAnswers([]);
     setButtonState(defaultButtonState);
     setShowClearDialog(false);
 }
@@ -363,6 +439,14 @@ function App() {
       .then((res) => {
         setSearchForm(searchHistory[index]);
         setSearchResults(res.data);
+        const restoredLLMAnswers = res.data.llm_answers ?? [];
+        setLLMQuestions(res.data.llm_questions ?? []);
+        setLLMAnswers(restoredLLMAnswers);
+        setSelectedPapers(getLLMExamplePaperIds(restoredLLMAnswers));
+        setLLMOptions({
+          includeExamples: restoredLLMAnswers.length > 0,
+          includeRationale: restoredLLMAnswers.length > 0,
+        });
         setButtonState((prevState) => ({
           ...prevState,
           showSelectAll: true,
@@ -593,6 +677,63 @@ function App() {
   }
   // State to store the Embla Carousel API instance.
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSearchHistory = async () => {
+      try {
+        const res = await axios.get<{ history: SearchHistorySummary[] }>(`${BASE_URL}/scraper/history/list`);
+        if (!isMounted) {
+          return;
+        }
+
+        const normalizedHistory = res.data.history.map(normalizeSearchHistoryEntry).reverse();
+        setSearchHistory(normalizedHistory);
+        if (normalizedHistory.length > 0) {
+          const latestIndex = normalizedHistory.length - 1;
+          setCurrentSearchHistoryIndex(latestIndex);
+
+          const latestHistory = res.data.history[0];
+          const latestResponse = await axios.get(`${BASE_URL}/scraper/historical-search`, {
+            params: { id: latestHistory.id }
+          });
+          if (!isMounted) {
+            return;
+          }
+
+          setSearchForm(normalizeSearchHistoryEntry(latestHistory));
+          setSearchResults(latestResponse.data);
+          const restoredLLMAnswers = latestResponse.data.llm_answers ?? [];
+          setLLMQuestions(latestResponse.data.llm_questions ?? []);
+          setLLMAnswers(restoredLLMAnswers);
+          setSelectedPapers(getLLMExamplePaperIds(restoredLLMAnswers));
+          setLLMOptions({
+            includeExamples: restoredLLMAnswers.length > 0,
+            includeRationale: restoredLLMAnswers.length > 0,
+          });
+          setButtonState((prevState) => ({
+            ...prevState,
+            showSelectAll: true,
+            showDeselectAll: true,
+            showForwardSearch: true,
+            showBackwardSearch: true,
+            showPopulateMetadata: true,
+            showHideMetadata: true,
+            showExport: true,
+          }))
+        }
+      } catch (err) {
+        console.error('Failed to load search history', err);
+      }
+    };
+
+    loadSearchHistory();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Auto-focus on the latest carousel item when searchHistory updates
   useEffect(() => {
@@ -1089,6 +1230,7 @@ function App() {
                   selectedPapers={selectedPapers}
                   buttonState={buttonState}
                   diffMode={diffMode}
+                  currentSearchReferenceId={searchHistory[currentSearchHistoryIndex]?.id ?? ""}
                 />
               </div>
               {/* Filters */}

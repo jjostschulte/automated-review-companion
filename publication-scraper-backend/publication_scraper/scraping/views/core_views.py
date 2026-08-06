@@ -353,6 +353,18 @@ class HistoricalSearchQueryResultsView(APIView):
         search_results = get_object_or_404(SearchResponse, id=search_id)
         return JsonResponse(search_results.to_dict())
 
+class SearchHistoryListView(APIView):
+
+    @Controller
+    def get(self, request):
+        """
+        List past searches ordered from newest to oldest.
+        """
+        history = SearchResponse.objects.all().order_by('-timestamp').values('id', 'query', 'timestamp')
+        return JsonResponse({
+            "history": list(history)
+        })
+
 class SearchHistoryPublicationView(APIView):
 
     @Controller

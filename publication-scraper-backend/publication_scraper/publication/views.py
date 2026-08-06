@@ -18,6 +18,7 @@ from .interfaces.filter.llm_filter import FilterResponse, LLMFilter, FilterAnswe
 from .interfaces.forward_search import ForwardSearch
 from .interfaces.validation import PublicationValidator
 from .models import Publication, PublicationMetadata, PublicationLLMUsage
+from scraping.models import SearchResponse
 from .serializers import (
     PublicationLLMFilterSerializer,
     PublicationSnowballingSerializer,
@@ -106,10 +107,12 @@ class PublicationLLMFilterView(APIView):
             examples: List[FilterAnswerExamples] = []
 
             questions = serializer.validated_data['questions']
+            questions_payload = list(questions)
             paper_ids = serializer.validated_data.get('paper_ids')
             answers = serializer.validated_data.get('answers')
             options = serializer.validated_data.get('options')
             progress_id = serializer.validated_data.get('progress_id')
+            search_reference_id = serializer.validated_data.get('search_reference_id')
 
             def update_progress(progress):
                 if progress_id:
@@ -186,6 +189,34 @@ class PublicationLLMFilterView(APIView):
                 results = [*answers, *results]
                 
             serialized_results = self._serialize_filter_results(results)
+            if search_reference_id:
+                try:
+                    from django.core.exceptions import ValidationError
+                    search_response = SearchResponse.objects.filter(id=search_reference_id).first()
+                except (ValueError, ValidationError):
+                    search_response = None
+                if search_response:
+                    response_by_paper_id = {
+                        result['paper_id']: result.get('responses', [])
+                        for result in serialized_results
+                        if result.get('paper_id')
+                    }
+                    updated_results = []
+                    for result in search_response.results:
+                        paper_id = result.get('paper_id')
+                        if paper_id in response_by_paper_id:
+                            updated_result = {
+                                **result,
+                                "llm_responses": response_by_paper_id[paper_id],
+                            }
+                            updated_results.append(updated_result)
+                        else:
+                            updated_results.append(result)
+
+                    search_response.results = updated_results
+                    search_response.llm_questions = questions_payload
+                    search_response.llm_answers = self._serialize_filter_results(answers)
+                    search_response.save()
             update_progress({
                 "completed": len(results) - len(answers) if includeExamples else len(results),
                 "total": len(publications) - len(answers) if includeExamples else len(publications),
@@ -292,5 +323,3 @@ class PublicationUploadView(APIView):
             "total_processed": len(dois),
             "total_success": len(publication_results)
         })
-
-

@@ -7,6 +7,7 @@ from .views.core_views import (
     SearchStringDifferenceView,
     ManualAddPublicationView,
     HistoricalSearchQueryResultsView,
+    SearchHistoryListView,
     SearchHistoryPublicationView,
 )
 from .views.crud_views import PublicationViewSet
@@ -22,6 +23,7 @@ core_urls = [
     path('publication-metadata', PublicationMetadataView.as_view(), name='publication-metadata'),
     path('manual-add-publication', ManualAddPublicationView.as_view(), name='manual-add-publication'),
     path('search-string-difference', SearchStringDifferenceView.as_view(), name='search-string-difference'),
+    path('history/list', SearchHistoryListView.as_view(), name='search-history-list'),
     path('historical-search', HistoricalSearchQueryResultsView.as_view(), name='historical-search'),
     path('history/publications', SearchHistoryPublicationView.as_view(), name='delete-publication'),
 ]
