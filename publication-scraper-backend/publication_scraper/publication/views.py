@@ -190,7 +190,11 @@ class PublicationLLMFilterView(APIView):
                 
             serialized_results = self._serialize_filter_results(results)
             if search_reference_id:
-                search_response = SearchResponse.objects.filter(id=search_reference_id).first()
+                try:
+                    from django.core.exceptions import ValidationError
+                    search_response = SearchResponse.objects.filter(id=search_reference_id).first()
+                except (ValueError, ValidationError):
+                    search_response = None
                 if search_response:
                     response_by_paper_id = {
                         result['paper_id']: result.get('responses', [])
