@@ -85,7 +85,6 @@ class LLMFilter:
             "You are provided with an academic publication's detailed information along with its metadata. "
             "Your task is to carefully analyze the data and accurately answer the following questions. "
             "Review the provided publication metadata, especially the title and abstract, to determine the best answer."
-            " If no abstract is available, the answer should be 'No abstract available'."
         )
         
         if self.include_rationale:
@@ -96,6 +95,7 @@ class LLMFilter:
         self.prompt += (
             "\n\nInstructions: For each question, select one of the comma-separated possible answers. "
             "Ensure that your choice is fully supported by the details in the publication data."
+            " If the abstract is not available, select 'No abstract available' -- even if the title might indicate a clear answer."
         )
 
         self.prompt += "\n\nQuestions:\n{qna}"
@@ -122,6 +122,11 @@ class LLMFilter:
                 "current_paper_id": "",
                 "status": "running",
             })
+        def get_abstract(paper_data: str) -> str:
+            for line in paper_data.splitlines():
+                if line.lower().startswith("abstract:"):
+                    return line[len("abstract:"):].strip()
+            return "No abstract available."
         for pid, paper in papers_to_process:
             if self.progress_callback:
                 self.progress_callback({
@@ -130,7 +135,21 @@ class LLMFilter:
                     "current_paper_id": pid,
                     "status": "running",
                 })
-            self._complete_llm_filter(pid, paper)
+            if get_abstract(paper) == "No abstract available." or len(get_abstract(paper)) < 10: # arbitrary threshold for "too short"
+                log.warning(f"Paper {pid} has no abstract available. Skipping LLM filter.")
+                self.results.append(LLMFilterResponse(
+                    paper_id=pid,
+                    responses=[
+                        FilterResponse(
+                            id="1",
+                            question="No abstract available",
+                            answer="No abstract available",
+                            rationale="The paper does not contain an abstract."
+                        )
+                    ]
+                ))
+            else:
+                self._complete_llm_filter(pid, paper)
             completed += 1
             if self.progress_callback:
                 self.progress_callback({
@@ -169,7 +188,9 @@ class LLMFilter:
             "1. ALL fields are required\n"
             "2. ALL values must be strings\n"
             "3. Empty or missing fields are not allowed\n"
-            "4. If unsure about a rationale, explain why you're uncertain"
+            "4. If unsure about a rationale, explain why you're uncertain\n"
+            "5. If the abstract is missing, select 'No abstract available' as the answer -- even if the title might indicate a clear answer\n"
+            "6. Do not fabricate information; base your answers strictly on the provided data"
         )
         
         user_prompt = ""
