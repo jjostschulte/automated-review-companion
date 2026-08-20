@@ -70,28 +70,37 @@ class PublicationMetadataExtractor:
     @Profiler("Extracting Metadata")
     def initialize_process(self, cache: bool = True):
         """ atomically extract metadata for all papers. """
+        paper_ids = [paper.paper_id for paper in self.papers]
+
+        # Bulk-fetch all existing metadata in one query instead of N+1 individual queries.
+        # select_related('publication') also avoids a second N+1 hit in to_dict(show_publication=True).
+        existing_metadata_qs = PublicationMetadata.objects.filter(
+            publication_id__in=paper_ids
+        ).select_related('publication')
+        cached_metadata = {md.publication_id: md for md in existing_metadata_qs}
+
         for index, paper in enumerate(self.papers):
             log.info(f"Extracting metadata for paper {index + 1}/{len(self.papers)} - {paper.paper_title}")
-            
+
             if cache:
-                extracted_metadata = PublicationMetadata.objects.filter(publication=paper)
-                if extracted_metadata.exists():
+                if paper.paper_id in cached_metadata:
                     log.warn(f"Metadata already extracted for {paper.paper_title} in cache.")
-                    self.extracted_metadata.append(extracted_metadata.first())
+                    self.extracted_metadata.append(cached_metadata[paper.paper_id])
                     continue
             else:
-                extracted_metadata = PublicationMetadata.objects.filter(publication=paper)
-                if extracted_metadata.exists():
-                    extracted_metadata.delete()
+                if paper.paper_id in cached_metadata:
+                    cached_metadata[paper.paper_id].delete()
 
-            # try:
-            extracted_metadata = self._extract_data(paper)
-            processed_metadata = self.post_processing(extracted_metadata)
-            processed_metadata.save()
-            self.extracted_metadata.append(processed_metadata)
-            # except Exception as e:
-            #     log.error(f"Error extracting metadata for {paper.paper_title}. - {e}")
-            #     self.failed_papers.append((index, paper))
+            try:
+                extracted_metadata = self._extract_data(paper)
+                processed_metadata = self.post_processing(extracted_metadata)
+                processed_metadata.save()
+                self.extracted_metadata.append(processed_metadata)
+            except Exception as e:
+                log.error(f"Error extracting metadata for {paper.paper_title}. - {e}", exc_info=True)
+                self.failed_papers.append((index, paper))
+                # continue processing the next paper instead of aborting the whole run
+                continue
         
         if len(self.failed_papers) > 0:
             log.error(f"Failed to extract metadata for {len(self.failed_papers)} papers:")
@@ -141,18 +150,18 @@ class PublicationMetadataExtractor:
         
         metadata = PublicationMetadata(
             publication           = paper,
-            paper_title           = paper.paper_title,
-            doi                   = doi,
-            authors               = authors,
-            abstract              = abstract,
-            publisher             = publisher,
-            semantic_scholar_url  = sch_paper.get("url"),
+            paper_title           = paper.paper_title or "",
+            doi                   = doi or "",
+            authors               = authors or "",
+            abstract              = abstract or "No abstract available.",
+            publisher             = publisher or "",
+            semantic_scholar_url  = sch_paper.get("url") or "",
             publication_date      = pub_date,
-            field_of_study        = fields_of_study,
-            conference_journal    = sch_paper.get("venue"),
-            publication_type      = paper_type,
-            search_string         = paper.search_string,
-            citation_count        = sch_paper.get("citationCount"),
+            field_of_study        = fields_of_study or "",
+            conference_journal    = sch_paper.get("venue") or "",
+            publication_type      = paper_type or "",
+            search_string         = paper.search_string or "",
+            citation_count        = sch_paper.get("citationCount") or 0,
         )
         return metadata
     

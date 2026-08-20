@@ -198,18 +198,26 @@ class PublicationMetadataView(APIView):
 
     def update_search_results(self, search_reference_id: str, metadata: List[Dict]):
 
-        if search_reference_id is None:
+        if not search_reference_id:
             return
 
         search_results = get_object_or_404(SearchResponse, id=search_reference_id)
         historical_results = search_results.results
+
+        metadata_by_paper_id = {}
+        for pub_metadata in metadata:
+            paper_id = pub_metadata.get('paper_id')
+            if not paper_id:
+                continue
+            if not isinstance(pub_metadata.get('publication_date'), str) and pub_metadata.get('publication_date') is not None:
+                pub_metadata['publication_date'] = pub_metadata['publication_date'].strftime('%Y-%m-%d')
+            metadata_by_paper_id[paper_id] = pub_metadata
+
         for idx, result in enumerate(historical_results):
-            for pub_metadata in metadata:
-                if result['paper_id'] == pub_metadata['paper_id']:
-                    if not isinstance(pub_metadata['publication_date'], str) and pub_metadata['publication_date'] is not None:
-                        pub_metadata['publication_date'] = pub_metadata['publication_date'].strftime('%Y-%m-%d')
-                    historical_results[idx] = pub_metadata
-                    break
+            paper_id = result.get('paper_id')
+            if paper_id and paper_id in metadata_by_paper_id:
+                historical_results[idx] = metadata_by_paper_id[paper_id]
+
         search_results.results = historical_results
         SearchResponse.objects.filter(id=search_reference_id).update(results=historical_results)
 
