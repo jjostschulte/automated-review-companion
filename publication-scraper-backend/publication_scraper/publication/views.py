@@ -240,6 +240,12 @@ class PublicationLLMFilterView(APIView):
         from django.conf import settings
         max_calls = getattr(settings, 'MAX_LLM_CALL_COUNT', 300)
         ip = self._get_client_ip(request)
+
+        # Treat non-positive values as "no limit" — useful for local LLM deployments.
+        if isinstance(max_calls, int) and max_calls <= 0:
+            log.info(f"LLM usage cap disabled (MAX_LLM_CALL_COUNT={max_calls}). Allowing requests from {ip}.")
+            return None
+
         today = datetime.date.today()
         usage = PublicationLLMUsage.objects.filter(ip_address=ip, date=today).first()
         if not usage:
