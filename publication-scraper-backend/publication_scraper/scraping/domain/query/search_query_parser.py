@@ -76,17 +76,55 @@ class SearchQueryParser:
             raise ValueError("Unsupported expression node")
     
 
+    def _is_parenthesized(self, node: ast.AST) -> bool:
+        """Return True if the original expression had parentheses directly around this node.
+
+        This checks the character immediately before and after the node's source span
+        in self.expr for '(' and ')'. Works best for single-line expressions (the
+        parser uses mode='eval'). If location info isn't available, conservatively
+        return False.
+        """
+        try:
+            start = node.col_offset
+            end = node.end_col_offset
+        except AttributeError:
+            return False
+        # Guard bounds
+        if start is None or end is None or start < 0 or end > len(self.expr):
+            return False
+        # Find previous non-space character before start
+        i = start - 1
+        while i >= 0 and self.expr[i].isspace():
+            i -= 1
+        if i < 0 or self.expr[i] != '(':
+            return False
+        # Find next non-space character after end
+        j = end
+        while j < len(self.expr) and self.expr[j].isspace():
+            j += 1
+        if j >= len(self.expr) or self.expr[j] != ')':
+            return False
+        return True
+
     def _format_operator(self, operator: SearchQueryOperator, operands: list, format_type: SearchEngineType) -> str:
         """ 
         Format the operator and operands based on the format type.
-        
+
         Args:
             operator (str): The operator to format.
-            operands (list): The operands to format.
+            operands (list): The operands to format (AST nodes).
             format_type (str): The format type to generate the search string for.
         """
-        formatted_operands = [self._build_expression(op, format_type) for op in operands]
-        
+        formatted_operands = []
+        for op in operands:
+            formatted = self._build_expression(op, format_type)
+            # Preserve any parentheses the user originally provided around this operand
+            if self._is_parenthesized(op):
+                # Avoid double-wrapping if already parenthesized in the output
+                if not (formatted.startswith("(") and formatted.endswith(")")):
+                    formatted = f"({formatted})"
+            formatted_operands.append(formatted)
+
         if format_type == SearchEngineType.SEMANTIC_SCHOLAR:
             if operator == SearchQueryOperator.AND:
                 joined_operands = " + ".join(formatted_operands)
@@ -114,7 +152,7 @@ class SearchQueryParser:
             elif operator == SearchQueryOperator.OR:
                 joined_operands = " OR ".join(formatted_operands)
         
-        # Add parentheses if this is an OR operator to ensure proper precedence
+        # Add parentheses around the entire OR expression to ensure precedence
         if operator == SearchQueryOperator.OR:
             return f"({joined_operands})"
         
