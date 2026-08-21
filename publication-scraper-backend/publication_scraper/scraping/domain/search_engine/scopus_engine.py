@@ -28,7 +28,7 @@ class ScopusEngine(SearchEngine):
         self.engine_type                = SearchEngineType.SCOPUS
         self.url                        = "https://api.elsevier.com/content/search/scopus"
         self.PAGINATED_OFFSET           = 10
-        self.MAX_RESULTS                = 1000
+        self.MAX_RESULTS = env.int('SCOPUS_MAX_RESULTS', default=1000)
         self.total_results              = 0
         self.cursor                     = None
 

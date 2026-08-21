@@ -23,6 +23,8 @@ class IEEEXploreEngine(SearchEngine):
 
     def __init__(self, search_query: SearchQuery = None):
         super().__init__()
+        # max total results to fetch (can be overridden via .env)
+        self.MAX_RESULTS = env.int('IEEE_MAX_RESULTS', default=1000)
         self.base_url = "https://ieeexploreapi.ieee.org/api/v1/search/articles"
         # https://ieeexploreapi.ieee.org/api/v1/search/articles?querytext=(rfid%20AND%20%22internet%20of%20things%22)&apikey=3bsxeu63cu3g4xbm9hts7suf
         self.engine_type: SearchEngineType = SearchEngineType.IEEE_XPLORE

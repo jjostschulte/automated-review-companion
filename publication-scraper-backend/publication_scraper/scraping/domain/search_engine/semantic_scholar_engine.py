@@ -38,7 +38,7 @@ class SemanticScholarEngine(SearchEngine):
         self.url: str                   = "https://api.semanticscholar.org/graph/v1/paper/search"
         self.bulkUrl: str               = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
         self.results: List[Publication] = []
-        self.BULK_MAX_RESULTS           = 5000
+        self.BULK_MAX_RESULTS           = env.int('SEMANTIC_SCHOLAR_MAX_RESULTS', default=5000)
         
         if search_query:
             self.search_type                = search_query.search_type
