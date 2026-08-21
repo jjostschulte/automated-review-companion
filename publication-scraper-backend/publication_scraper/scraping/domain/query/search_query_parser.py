@@ -134,6 +134,10 @@ class SearchQueryParser:
 
     def _format_phrase(self, phrase: str, format_type: SearchEngineType) -> str:
         if format_type == SearchEngineType.SEMANTIC_SCHOLAR:
+            if self.WILDCARD in phrase:
+                phrase = phrase.replace(self.WILDCARD, "*")
+            if "*" in phrase:
+                return f'{phrase}'  # Do not add quotes if it contains a wildcard
             return f'"{phrase}"'
         if format_type == SearchEngineType.DBLP:
             return f'{phrase}$'  # Append $ for DBLP
